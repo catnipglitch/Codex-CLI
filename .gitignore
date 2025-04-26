@@ -1,5 +1,17 @@
-current_context.txt
-current_context.config
-contexts/test.txt
-src/__pycache__/
+# --- 追加分 ---
+
+# OpenAI 認証情報
 src/openaiapirc
+**/.openai/
+
+# ログファイル
+codex_debug.log
+openai_test.log
+
+# エディタ設定／ワークスペース
+.vscode/
+*.code-workspace
+
+# Python キャッシュ等
+__pycache__/
+*.py[cod]

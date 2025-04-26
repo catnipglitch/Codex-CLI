@@ -1,9 +1,15 @@
 import os
 import time
 import configparser
+import sys
+import logging
 
 from pathlib import Path
 
+# デバッグログ用の設定
+LOG_FILE = os.path.join(os.path.dirname(__file__), "..", "codex_debug.log")
+logging.basicConfig(filename=LOG_FILE, level=logging.DEBUG, 
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 
 API_KEYS_LOCATION = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'openaiapirc')
 
@@ -18,10 +24,31 @@ class PromptFile:
         
         self.file_path = self.default_file_path
         self.config_path = self.default_config_path
+        # configパラメータをインスタンス変数として設定
+        self.config = config
+
+        # ファイルが存在しない場合は作成する
+        self._ensure_files_exist()
 
         # loading in one of the saved contexts
         if file_name != self.default_context_filename:
             self.load_context(file_name, True)
+
+    def _ensure_files_exist(self):
+        """
+        ファイルが存在しない場合は作成する
+        """
+        # コンテキストファイルを確認・作成
+        if not os.path.exists(self.file_path):
+            logging.debug(f"コンテキストファイルが存在しないため作成します: {self.file_path}")
+            os.makedirs(os.path.dirname(self.file_path), exist_ok=True)
+            with open(self.file_path, 'w') as f:
+                f.write('')  # 空のファイルを作成
+                
+        # 設定ファイルを確認
+        if not self.has_config():
+            logging.debug(f"設定ファイルが存在しないため作成します: {self.config_path}")
+            self.set_config(self.config)
 
     def has_config(self):
         """
@@ -42,7 +69,7 @@ class PromptFile:
             lines = f.readlines()
 
         config = {
-            'engine': lines[0].split(':')[1].strip(),
+            'model': lines[0].split(':')[1].strip(),
             'temperature': float(lines[1].split(':')[1].strip()),
             'max_tokens': int(lines[2].split(':')[1].strip()),
             'shell': lines[3].split(':')[1].strip(),
@@ -59,8 +86,11 @@ class PromptFile:
         """
         self.config = config
         
+        # 親ディレクトリが存在することを確認
+        os.makedirs(os.path.dirname(self.config_path), exist_ok=True)
+        
         with open(self.config_path, 'w') as f:
-            f.write('engine: {}\n'.format(self.config['engine']))
+            f.write('model: {}\n'.format(self.config['model']))
             f.write('temperature: {}\n'.format(self.config['temperature']))
             f.write('max_tokens: {}\n'.format(self.config['max_tokens']))
             f.write('shell: {}\n'.format(self.config['shell']))
@@ -95,23 +125,46 @@ class PromptFile:
 
         Returns: the prompt file after appending the input
         """
+        # デバッグログを追加
+        logging.debug(f"read_prompt_file called with input: '{input}'")
+        
+        # 空の入力チェックを追加
+        if not input or input.strip() == '':
+            error_msg = "\n#   エラー: 空のクエリは処理できません。'#'の後に何かテキストを入力してください。"
+            print(error_msg)
+            logging.error(error_msg)
+            return None
 
-        input_tokens_count = len(input.split())
-        need_to_refresh = (self.config['token_count'] + input_tokens_count > 2048)
+        try:
+            # ファイルが存在することを確認
+            if not os.path.exists(self.file_path):
+                with open(self.file_path, 'w') as f:
+                    f.write('')  # 空のファイルを作成
+            
+            input_tokens_count = len(input.split())
+            need_to_refresh = (self.config['token_count'] + input_tokens_count > 2048)
 
-        if need_to_refresh:
-            # delete first 2 lines of prompt context file
+            if need_to_refresh:
+                # delete first 2 lines of prompt context file
+                with open(self.file_path, 'r') as f:
+                    lines = f.readlines()
+                    prompt = lines[2:] if len(lines) > 2 else []  # ファイルが短い場合の対策
+                with open(self.file_path, 'w') as f:
+                    f.writelines(prompt)
+
+            # get input from prompt file
             with open(self.file_path, 'r') as f:
                 lines = f.readlines()
-                prompt = lines[2:] # drop first 2 lines of prompt
-            with open(self.file_path, 'w') as f:
-                f.writelines(prompt)
 
-        # get input from prompt file
-        with open(self.file_path, 'r') as f:
-            lines = f.readlines()
-
-        return ''.join(lines)
+            prompt_content = ''.join(lines)
+            logging.debug(f"Returning prompt content, length: {len(prompt_content)}")
+            return prompt_content
+            
+        except Exception as e:
+            error_msg = f"\n#   エラー: プロンプト処理中に問題が発生しました: {str(e)}"
+            print(error_msg)
+            logging.error(f"Exception in read_prompt_file: {str(e)}", exc_info=True)
+            return None
     
     def get_token_count(self):
         """
@@ -228,13 +281,13 @@ class PromptFile:
             with filepath.open('r') as f:
                 lines = f.readlines()
             
-            # read in the engine name from openaiapirc
+            # read in the model name from openaiapirc
             config = configparser.ConfigParser()
             config.read(API_KEYS_LOCATION)
-            ENGINE = config['openai']['engine'].strip('"').strip("'")
+            MODEL = config['openai']['model'].strip('"').strip("'")
 
             config = {
-                'engine': ENGINE,
+                'model': MODEL,
                 'temperature': float(lines[1].split(':')[1].strip()),
                 'max_tokens': int(lines[2].split(':')[1].strip()),
                 'shell': lines[3].split(':')[1].strip(),
@@ -250,6 +303,9 @@ class PromptFile:
 
             lines = lines[6:]
 
+            # ファイルが存在することを確認
+            os.makedirs(os.path.dirname(self.file_path), exist_ok=True)
+            
             # write to the current prompt file if we are in multi-turn mode
             if initialize == False or self.config['multi_turn'] == "off":
                 with open(self.file_path, 'w') as f:

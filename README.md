@@ -1,15 +1,15 @@
 # Codex CLI - Natural Language Command Line Interface
 
-This project uses [GPT-3 Codex](https://openai.com/blog/openai-codex/) to convert natural language commands into commands in PowerShell, Z shell and Bash.
+This project uses [GPT-4o](https://openai.com/gpt-4o) to convert natural language commands into commands in PowerShell, Z shell and Bash.
 
 ![Codex Cli GIF](codex_cli.gif)
 
 
-The Command Line Interface (CLI) was the first major User Interface we used to interact with machines. It's incredibly powerful, you can do almost anything with a CLI, but it requires the user to express their intent extremely precisely. The user needs to _know the language of the computer_. 
+The Command Line Interface (CLI) was the first major User Interface we used to interact with machines. It's incredibly powerful, you can do almost anything with a CLI, but it requires the user to express their intent extremely precisely. The user needs to _know the language of the computer_.
 
-With the advent of Large Language Models (LLMs), particularly those that have been trained on code, it's possible to interact with a CLI using Natural Language (NL). In effect, these models understand natural language _and_ code well enough that they can translate from one to another. 
+With the advent of Large Language Models (LLMs), particularly those that have been trained on code, it's possible to interact with a CLI using Natural Language (NL). In effect, these models understand natural language _and_ code well enough that they can translate from one to another.
 
-This project aims to offer a cross-shell NL->Code experience to allow users to interact with their favorite CLI using NL. The user enters a command, like "what's my IP address", hits `Ctrl + G` and gets a suggestion for a command idiomatic to the shell they're using. The project uses the GPT-3 Codex model off-the-shelf, meaning the model has not been explicitly trained for the task. Instead we rely on a discipline called prompt engineering (see [section](#prompt-engineering-and-context-files) below) to coax the right commands from Codex. 
+This project aims to offer a cross-shell NL->Code experience to allow users to interact with their favorite CLI using NL. The user enters a command, like "what's my IP address", hits `Ctrl + G` and gets a suggestion for a command idiomatic to the shell they're using. The project uses the GPT-4o model from OpenAI, which has exceptional code generation capabilities. We rely on a discipline called prompt engineering (see [section](#prompt-engineering-and-context-files) below) to coax the right commands from the model.
 
 **Note: The model can still make mistakes! Don't run a command if you don't understand it. If you're not sure what a command does, hit `Ctrl + C` to cancel it**.
 
@@ -22,9 +22,9 @@ This repository aims to grow the understanding of using Codex in applications by
 * [Python 3.7.1+](https://www.python.org/downloads/)
     * \[Windows\]: Python is added to PATH.
 * An [OpenAI account](https://openai.com/api/)
-    * [OpenAI API Key](https://beta.openai.com/account/api-keys).
-    * [OpenAI Organization Id](https://beta.openai.com/account/org-settings). If you have multiple organizations, please update your [default organization](https://beta.openai.com/account/api-keys) to the one that has access to codex engines before getting the organization Id.
-    * [OpenAI Engine Id](https://beta.openai.com/docs/engines/codex-series-private-beta). It provides access to a model. For example, `code-davinci-002` or `code-cushman-001`. See [here](#what-openai-engines-are-available-to-me) for checking available engines.
+    * [OpenAI API Key](https://platform.openai.com/api-keys).
+    * [OpenAI Organization Id](https://platform.openai.com/account/organization). If you have multiple organizations, please update your default organization to the one that has access to GPT-4o before getting the organization Id.
+    * OpenAI Model Name: Use `gpt-4o` for the best results. See [here](#what-openai-models-are-available-to-me) for checking available models.
 
 ## Installation
 
@@ -68,11 +68,11 @@ Any time the model seems to output consistently incorrect commands, you can use 
 | `set <config-key> <config-value>` | Sets the configuration of your interaction with the model |
 
 
-Feel free to improve your experience by changing the token limit, engine id and temperature using the set command. For example, `# set engine cushman-codex`, `# set temperature 0.5`, `# set max_tokens 50`.
+Feel free to improve your experience by changing the token limit, model name and temperature using the set command. For example, `# set engine gpt-4o`, `# set temperature 0.5`, `# set max_tokens 50`.
 
 ## Prompt Engineering and Context Files
 
-This project uses a discipline called _prompt engineering_ to coax GPT-3 Codex to generate commands from natural language. Specifically, we pass the model a series of examples of NL->Commands, to give it a sense of the kind of code it should be writing, and also to nudge it towards generating commands idiomatic to the shell you're using. These examples live in the `contexts` directory. See snippet from the PowerShell context below:
+This project uses a discipline called _prompt engineering_ to coax GPT-4o to generate commands from natural language. Specifically, we pass the model a series of examples of NL->Commands, to give it a sense of the kind of code it should be writing, and also to nudge it towards generating commands idiomatic to the shell you're using. These examples live in the `contexts` directory. See snippet from the PowerShell context below:
 
 ```powershell
 # what's the weather in New York?
@@ -86,9 +86,9 @@ src" | Out-File .gitignore
 notepad .gitignore
 ```
 
-Note that this project models natural language commands as comments, and provide examples of the kind of PowerShell scripts we expect the model to write. These examples include single line completions, multi-line completions, and multi-turn completions (the "open it in notepad" example refers to the `.gitignore` file generated on the previous turn). 
+Note that this project models natural language commands as comments, and provide examples of the kind of PowerShell scripts we expect the model to write. These examples include single line completions, multi-line completions, and multi-turn completions (the "open it in notepad" example refers to the `.gitignore` file generated on the previous turn).
 
-When a user enters a new command (say "what's my IP address"), we simple append that command onto the context (as a comment) and ask Codex to generate the code that should follow it. Having seen the examples above, Codex will know that it should write a short PowerShell script that satisfies the comment. 
+When a user enters a new command (say "what's my IP address"), we simple append that command onto the context (as a comment) and ask GPT-4o to generate the code that should follow it. Having seen the examples above, GPT-4o will know that it should write a short PowerShell script that satisfies the comment.
 
 ## Building your own Contexts
 
@@ -101,7 +101,7 @@ kubectl create service clusterip my-cs --tcp=5678:8080
 
 Add your context to the `contexts` folder and run `load context <filename>` to load it. You can also change the default context from to your context file inside `src\prompt_file.py`.
 
-Note that Codex will often produce correct scripts without any examples. Having been trained on a large corpus of code, it frequently knows how to produce specific commands. That said, building your own contexts helps coax the specific kind of script you're looking for - whether it's long or short, whether it declares variables or not, whether it refers back to previous commands, etc. You can also provide examples of your own CLI commands and scripts, to show Codex other tools it should consider using.
+Note that GPT-4o will often produce correct scripts without any examples. Having been trained on a large corpus of code, it frequently knows how to produce specific commands. That said, building your own contexts helps coax the specific kind of script you're looking for - whether it's long or short, whether it declares variables or not, whether it refers back to previous commands, etc. You can also provide examples of your own CLI commands and scripts, to show GPT-4o other tools it should consider using.
 
 One important thing to consider is that if you add a new context, keep the multi-turn mode on to avoid our automatic defaulting (which was added to keep faulty contexts from breaking your experience).
 
@@ -114,12 +114,12 @@ Use `DEBUG_MODE` to use a terminal input instead of the stdin and debug the code
 Sometimes the `openai` package will throws errors that aren't caught by the tool, you can add a catch block at the end of `codex_query.py` for that exception and print a custom error message.
 
 ## FAQ
-### What OpenAI engines are available to me?
-You might have access to different [OpenAI engines](https://beta.openai.com/docs/api-reference/engines) per OpenAI organization. To check what engines are available to you, one can query the [List engines API](https://beta.openai.com/docs/api-reference/engines/list) for available engines. See the following commands:
+### What OpenAI models are available to me?
+You might have access to different OpenAI models per OpenAI organization. To check what models are available to you, one can query the [List models API](https://platform.openai.com/docs/api-reference/models/list) for available models. See the following commands:
 
 * Shell
     ```
-    curl https://api.openai.com/v1/engines \
+    curl https://api.openai.com/v1/models \
       -H 'Authorization: Bearer YOUR_API_KEY' \
       -H 'OpenAI-Organization: YOUR_ORG_ID'
     ```
@@ -128,13 +128,13 @@ You might have access to different [OpenAI engines](https://beta.openai.com/docs
 
     PowerShell v5 (The default one comes with Windows)
     ```powershell
-    (Invoke-WebRequest -Uri https://api.openai.com/v1/engines -Headers @{"Authorization" = "Bearer YOUR_API_KEY"; "OpenAI-Organization" = "YOUR_ORG_ID"}).Content
+    (Invoke-WebRequest -Uri https://api.openai.com/v1/models -Headers @{"Authorization" = "Bearer YOUR_API_KEY"; "OpenAI-Organization" = "YOUR_ORG_ID"}).Content
     ```
 
     PowerShell v7
     ```powershell
-    (Invoke-WebRequest -Uri https://api.openai.com/v1/engines -Authentication Bearer -Token (ConvertTo-SecureString "YOUR_API_KEY" -AsPlainText -Force) -Headers @{"OpenAI-Organization" = "YOUR_ORG_ID"}).Content
+    (Invoke-WebRequest -Uri https://api.openai.com/v1/models -Authentication Bearer -Token (ConvertTo-SecureString "YOUR_API_KEY" -AsPlainText -Force) -Headers @{"OpenAI-Organization" = "YOUR_ORG_ID"}).Content
     ```
 
 ### Can I run the sample on Azure?
-The sample code can be currently be used with Codex on OpenAI’s API. In the coming months, the sample will be updated so you can also use it with the [Azure OpenAI Service](https://aka.ms/azure-openai). 
+The sample code can be used with GPT-4o on OpenAI's API. You can also use it with the [Azure OpenAI Service](https://aka.ms/azure-openai) if you have access to GPT-4o through Azure.
