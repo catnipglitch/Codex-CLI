@@ -13,35 +13,21 @@ LOG_FILE = os.path.join(os.path.dirname(__file__), "..", "codex_debug.log")
 logging.basicConfig(filename=LOG_FILE, level=logging.DEBUG, 
                    format='%(asctime)s - %(levelname)s - %(message)s')
 
-# OpenAI API設定ファイルのパス (バックアップとして残す)
-API_KEYS_LOCATION = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'openaiapirc')
-
 def read_openai_api_key():
     """
     環境変数からOpenAI APIキーを読み込みます。
-    環境変数がない場合はファイルから読み込みを試みます。
     """
     try:
         # 環境変数からAPIキーを取得
         api_key = os.environ.get('OPENAI_API_KEY')
         model = os.environ.get('OPENAI_MODEL', 'gpt-4o')
-        
-        # 環境変数が設定されていない場合はファイルから読み込み
+        # APIキー未設定の場合はエラー
         if not api_key:
-            logging.warning("環境変数OPENAI_API_KEYが設定されていません。ファイルから読み込みます")
-            config = configparser.ConfigParser()
-            config.read(API_KEYS_LOCATION)
-            api_key = config['openai']['secret_key'].strip('"').strip("'")
-            model = config['openai'].get('model', 'gpt-4o').strip('"').strip("'")
-        
-        # 組織IDは任意オプション
+            logging.error("環境変数OPENAI_API_KEYが設定されていません")
+            print("エラー: 環境変数OPENAI_API_KEYを設定してください")
+            sys.exit(1)
+        # 組織IDは環境変数から取得（必須ではない）
         organization = os.environ.get('OPENAI_ORG_ID')
-        if not organization and os.path.exists(API_KEYS_LOCATION):
-            config = configparser.ConfigParser()
-            config.read(API_KEYS_LOCATION)
-            if 'organization_id' in config.get('openai', {}):
-                organization = config['openai']['organization_id'].strip('"').strip("'")
-        
         return api_key, organization, model
     except Exception as e:
         logging.error(f"API設定の読み込みエラー: {str(e)}")

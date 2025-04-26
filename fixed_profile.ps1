@@ -1,15 +1,11 @@
 ### Codex CLI setup - start
-# コンソールエンコーディングをUTF-8に設定
-[Console]::InputEncoding = [System.Text.Encoding]::UTF8
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$OutputEncoding = [System.Text.Encoding]::UTF8
-
-$nl_cli_script = "{{codex_query_path}}"
+# TODO: 以下にcodex_query.pyのパスを指定してください
+$nl_cli_script = "<path-to-your-codex_query.py>"
 
 # この関数はバッファからの入力を取得しcodex_query.pyに渡します
 function global:SendToCodex {
     param (
-        [Parameter(Mandatory = $true)] [string] $buffer
+        [Parameter (Mandatory = $true)] [string] $buffer
     )
     
     if ($nl_cli_script -eq "" -or !(Test-Path($nl_cli_script))) {
@@ -25,7 +21,7 @@ function global:SendToCodex {
         $encodedBuffer = [System.Text.Encoding]::UTF8.GetString($bufferBytes)
         
         # 直接パイプを使用してPythonスクリプトに渡す
-        $output = $encodedBuffer | & python -u $nl_cli_script
+        $output = $encodedBuffer | python $nl_cli_script
         
         if ($null -eq $output -or $output -eq "") {
             # 出力が空の場合、直接実行を試みる
@@ -36,7 +32,7 @@ function global:SendToCodex {
             [System.IO.File]::WriteAllText($tempFile, $buffer, [System.Text.Encoding]::UTF8)
             
             # 直接実行
-            $output = & python -u $nl_cli_script $tempFile
+            $output = python $nl_cli_script $tempFile
             
             # 一時ファイルを削除
             if (Test-Path $tempFile) {

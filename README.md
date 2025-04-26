@@ -30,6 +30,22 @@ This repository aims to grow the understanding of using Codex in applications by
 
 Please follow the installation instructions for PowerShell, bash or zsh from [here](./Installation.md).
 
+### Configuration File
+
+Codex CLI uses the following configuration file:
+
+**~/.openai/codex-cli.json** - Configuration file with API credentials and settings:
+```json
+{
+  "api_key": "YOUR_API_KEY",
+  "organization": "YOUR_ORGANIZATION_ID",
+  "model": "gpt-4o",
+  "language": "en"  // Language setting: "en" (English) or "ja" (Japanese)
+}
+```
+
+The `language` setting determines the language of system prompts used when generating commands. If not specified, English is used by default.
+
 ## Usage
 
 Once configured for your shell of preference, you can use the Codex CLI by writing a comment (starting with `#`) into your shell, and then hitting `Ctrl + G`.

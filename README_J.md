@@ -38,6 +38,22 @@ APIキーや組織IDなどの設定は以下の環境変数を使用して設定
 
 PowerShell、bash、zshのインストール手順は[こちら](./Installation.md)を参照してください。
 
+### 設定ファイル
+
+Codex CLIは以下の設定ファイルを使用します：
+
+**~/.openai/codex-cli.json** - API認証情報と設定を含む設定ファイル：
+```json
+{
+  "api_key": "YOUR_API_KEY",
+  "organization": "YOUR_ORGANIZATION_ID",
+  "model": "gpt-4o",
+  "language": "en"  // 言語設定: "en"（英語）または "ja"（日本語）
+}
+```
+
+`language`設定は、コマンド生成時に使用されるシステムプロンプトの言語を決定します。指定されていない場合、デフォルトで英語が使用されます。
+
 ## 使用方法
 
 好みのシェル用に設定が完了したら、シェルにコメント（`#`で始まる）を書き込み、`Ctrl + G`を押すことでCodex CLIを使用できます。

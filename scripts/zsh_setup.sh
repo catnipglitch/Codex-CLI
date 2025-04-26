@@ -6,9 +6,10 @@
 #   -o: Your OpenAI organization id.
 #   -k: Your OpenAI API key.
 #   -e: The OpenAI model name that provides access to a model.
+#   -l: Language setting (en, ja). Default is "en".
 #
 # For example:
-# ./zsh_setup.sh -o <YOUR_ORG_ID> -k <YOUR_API_KEY> -e <MODEL_NAME>
+# ./zsh_setup.sh -o <YOUR_ORG_ID> -k <YOUR_API_KEY> -e <MODEL_NAME> -l <LANGUAGE>
 # 
 set -e
 
@@ -62,6 +63,7 @@ configureApp()
     echo "organization_id=$orgId" >> $openAIConfigPath
     echo "secret_key=$secret" >> $openAIConfigPath
     echo "model=$modelName" >> $openAIConfigPath
+    echo "language=$language" >> $openAIConfigPath
     
     echo "Updated OpenAI configuration file ($openAIConfigPath) with secrets"
 
@@ -76,7 +78,8 @@ zmodload zsh/zutil
 zparseopts -E -D -- \
           o:=o_orgId \
           e:=o_modelName \
-          k:=o_key
+          k:=o_key \
+          l:=o_language
 
 if (( ${+o_orgId[2]} )); then
     orgId=${o_orgId[2]}
@@ -94,8 +97,14 @@ if (( ${+o_key[2]} )); then
     secret=${o_key[2]}
 else
    # Prompt user for OpenAI access key
-   read -rs 'secret?OpenAI access key:'
+   read -rs 'secret?OpenAI access key:' 
    echo -e "\n"
+fi
+
+if (( ${+o_language[2]} )); then
+    language=${o_language[2]}
+else
+    echo -n 'Language (en, ja): '; read language
 fi
 
 # Detect Codex CLI folder path

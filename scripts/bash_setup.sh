@@ -13,6 +13,7 @@ Usage: source bash_setup.sh [optional parameters]
     -o orgId     Set the OpenAI organization id.
     -k apiKey    Set the OpenAI API key.
     -e modelName  Set the OpenAI model name.
+    -l language  Set the language (en, ja). Default is "en".
     -d           Print some system information for debugging.
     -h           Print this help content.
 
@@ -29,6 +30,7 @@ readParameters()
             -o ) shift; ORG_ID=$1 ;;
             -k ) shift; SECRET_KEY=$1 ;;
             -e ) shift; MODEL_NAME=$1 ;;
+            -l ) shift; LANGUAGE=$1 ;;
             -d ) systemInfo
                  exitScript
                 ;;
@@ -52,6 +54,9 @@ askSettings()
     fi
     if [ -z "$MODEL_NAME" ]; then
         echo -n 'OpenAI Model Name: '; read MODEL_NAME
+    fi
+    if [ -z "$LANGUAGE" ]; then
+        echo -n 'Language (en, ja): '; read LANGUAGE
     fi
 }
 
@@ -89,6 +94,7 @@ configureApp()
     echo "organization_id=$ORG_ID" >> $OPENAI_RC_FILE
     echo "secret_key=$SECRET_KEY" >> $OPENAI_RC_FILE
     echo "model=$MODEL_NAME" >> $OPENAI_RC_FILE
+    echo "language=$LANGUAGE" >> $OPENAI_RC_FILE
     chmod +x "$CODEX_CLI_PATH/src/codex_query.py"
 }
 
@@ -148,7 +154,7 @@ systemInfo()
 # Remove variables and functions from the environment, in case the script was sourced
 cleanupEnv()
 {
-    unset ORG_ID SECRET_KEY MODEL_NAME SOURCED OPENAI_RC_FILE BASH_RC_FILE
+    unset ORG_ID SECRET_KEY MODEL_NAME LANGUAGE SOURCED OPENAI_RC_FILE BASH_RC_FILE
     unset -f askSettings validateSettings configureApp configureBash enableApp readParameters
 }
 

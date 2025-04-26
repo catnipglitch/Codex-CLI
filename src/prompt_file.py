@@ -11,8 +11,6 @@ LOG_FILE = os.path.join(os.path.dirname(__file__), "..", "codex_debug.log")
 logging.basicConfig(filename=LOG_FILE, level=logging.DEBUG, 
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
-API_KEYS_LOCATION = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'openaiapirc')
-
 class PromptFile:
     context_source_filename = ""
     default_context_filename = "current_context.txt"
@@ -42,7 +40,7 @@ class PromptFile:
         if not os.path.exists(self.file_path):
             logging.debug(f"コンテキストファイルが存在しないため作成します: {self.file_path}")
             os.makedirs(os.path.dirname(self.file_path), exist_ok=True)
-            with open(self.file_path, 'w') as f:
+            with open(self.file_path, 'w', encoding='utf-8') as f:
                 f.write('')  # 空のファイルを作成
                 
         # 設定ファイルを確認
@@ -65,8 +63,13 @@ class PromptFile:
             self.set_config(self.config)
             return self.config
         
-        with open(self.config_path, 'r') as f:
-            lines = f.readlines()
+        try:
+            with open(self.config_path, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+        except UnicodeDecodeError:
+            # UTF-8でデコードできない場合はcp932を試す
+            with open(self.config_path, 'r', encoding='cp932') as f:
+                lines = f.readlines()
 
         config = {
             'model': lines[0].split(':')[1].strip(),
@@ -74,7 +77,8 @@ class PromptFile:
             'max_tokens': int(lines[2].split(':')[1].strip()),
             'shell': lines[3].split(':')[1].strip(),
             'multi_turn': lines[4].split(':')[1].strip(),
-            'token_count': int(lines[5].split(':')[1].strip())
+            'token_count': int(lines[5].split(':')[1].strip()),
+            'language': 'en'  # デフォルト言語は英語
         }
 
         self.config = config
@@ -89,13 +93,14 @@ class PromptFile:
         # 親ディレクトリが存在することを確認
         os.makedirs(os.path.dirname(self.config_path), exist_ok=True)
         
-        with open(self.config_path, 'w') as f:
+        with open(self.config_path, 'w', encoding='utf-8') as f:
             f.write('model: {}\n'.format(self.config['model']))
             f.write('temperature: {}\n'.format(self.config['temperature']))
             f.write('max_tokens: {}\n'.format(self.config['max_tokens']))
             f.write('shell: {}\n'.format(self.config['shell']))
             f.write('multi_turn: {}\n'.format(self.config['multi_turn']))
             f.write('token_count: {}\n'.format(self.config['token_count']))
+            f.write('language: {}\n'.format(self.config.get('language', 'en')))
     
     def show_config(self):
         print('\n')
@@ -110,9 +115,18 @@ class PromptFile:
         Add lines to file_name and update the token_count
         """
 
-        with open(self.file_path, 'a') as f:
-            f.write(user_query)
-            f.write(prompt_response)
+        try:
+            with open(self.file_path, 'a', encoding='utf-8') as f:
+                f.write(user_query)
+                if prompt_response:
+                    f.write(prompt_response)
+        except UnicodeEncodeError as e:
+            logging.error(f"ファイル書き込み時のエンコードエラー: {str(e)}")
+            # エンコードエラーが発生した場合、問題のある文字を置換
+            with open(self.file_path, 'a', encoding='utf-8', errors='replace') as f:
+                f.write(user_query)
+                if prompt_response:
+                    f.write(prompt_response)
         
         if self.config['multi_turn'] == 'on':
             self.config['token_count'] += len(user_query.split()) + len(prompt_response.split())
@@ -138,7 +152,7 @@ class PromptFile:
         try:
             # ファイルが存在することを確認
             if not os.path.exists(self.file_path):
-                with open(self.file_path, 'w') as f:
+                with open(self.file_path, 'w', encoding='utf-8') as f:
                     f.write('')  # 空のファイルを作成
             
             input_tokens_count = len(input.split())
@@ -146,15 +160,27 @@ class PromptFile:
 
             if need_to_refresh:
                 # delete first 2 lines of prompt context file
-                with open(self.file_path, 'r') as f:
-                    lines = f.readlines()
-                    prompt = lines[2:] if len(lines) > 2 else []  # ファイルが短い場合の対策
-                with open(self.file_path, 'w') as f:
+                try:
+                    with open(self.file_path, 'r', encoding='utf-8') as f:
+                        lines = f.readlines()
+                        prompt = lines[2:] if len(lines) > 2 else []  # ファイルが短い場合の対策
+                except UnicodeDecodeError:
+                    # UTF-8でデコードできない場合はcp932を試す
+                    with open(self.file_path, 'r', encoding='cp932') as f:
+                        lines = f.readlines()
+                        prompt = lines[2:] if len(lines) > 2 else []
+                
+                with open(self.file_path, 'w', encoding='utf-8') as f:
                     f.writelines(prompt)
 
             # get input from prompt file
-            with open(self.file_path, 'r') as f:
-                lines = f.readlines()
+            try:
+                with open(self.file_path, 'r', encoding='utf-8') as f:
+                    lines = f.readlines()
+            except UnicodeDecodeError:
+                # UTF-8でデコードできない場合はcp932を試す
+                with open(self.file_path, 'r', encoding='cp932') as f:
+                    lines = f.readlines()
 
             prompt_content = ''.join(lines)
             logging.debug(f"Returning prompt content, length: {len(prompt_content)}")
@@ -172,13 +198,22 @@ class PromptFile:
         """
         token_count = 0
         if self.has_config():
-            with open(self.config_path, 'r') as f:
-                lines = f.readlines()
-                token_count = int(lines[5].split(':')[1].strip())
+            try:
+                with open(self.config_path, 'r', encoding='utf-8') as f:
+                    lines = f.readlines()
+                    token_count = int(lines[5].split(':')[1].strip())
+            except UnicodeDecodeError:
+                with open(self.config_path, 'r', encoding='cp932') as f:
+                    lines = f.readlines()
+                    token_count = int(lines[5].split(':')[1].strip())
         
         true_token_count = 0
-        with open(self.file_path, 'r') as f:
-            lines = f.readlines()
+        try:
+            with open(self.file_path, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+        except UnicodeDecodeError:
+            with open(self.file_path, 'r', encoding='cp932') as f:
+                lines = f.readlines()
             # count the number of words in the prompt file
             for line in lines:
                 true_token_count += len(line.split())
@@ -196,14 +231,20 @@ class PromptFile:
         """
         config = self.read_config()
         filename = time.strftime("%Y-%m-%d_%H-%M-%S") + ".txt"
-        with open(self.file_path, 'r') as f:
-            lines = f.readlines()
-            filename = os.path.join(os.path.dirname(__file__), "..", "deleted", filename)
-            with Path(filename).open('w') as f:
-                f.writelines(lines)
+        try:
+            with open(self.file_path, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+        except UnicodeDecodeError:
+            with open(self.file_path, 'r', encoding='cp932') as f:
+                lines = f.readlines()
+                
+        filename = os.path.join(os.path.dirname(__file__), "..", "deleted", filename)
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        with Path(filename).open('w', encoding='utf-8') as f:
+            f.writelines(lines)
         
         # delete the prompt file
-        with open(self.file_path, 'w') as f:
+        with open(self.file_path, 'w', encoding='utf-8') as f:
             f.write('')
         
         print("\n#   Context has been cleared, temporarily saved to {}".format(filename))
@@ -213,13 +254,18 @@ class PromptFile:
         """
         Clear the last interaction from the prompt file
         """
-        with open(self.file_path, 'r') as f:
-            lines = f.readlines()
-            if len(lines) > 1:
-                lines.pop()
-                lines.pop()
-                with open(self.file_path, 'w') as f:
-                    f.writelines(lines)
+        try:
+            with open(self.file_path, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+        except UnicodeDecodeError:
+            with open(self.file_path, 'r', encoding='cp932') as f:
+                lines = f.readlines()
+                
+        if len(lines) > 1:
+            lines.pop()
+            lines.pop()
+            with open(self.file_path, 'w', encoding='utf-8') as f:
+                f.writelines(lines)
             print("\n#   Unlearned interaction")
     
     def save_to(self, save_name):
@@ -231,17 +277,27 @@ class PromptFile:
         save_path = os.path.join(os.path.dirname(__file__), "..", "contexts", save_name)
 
         # first write the config
-        with open(self.config_path, 'r') as f:
-            lines = f.readlines()
-            lines = ['## ' + line for line in lines]
-            with Path(save_path).open('w') as f:
-                f.writelines(lines)
+        try:
+            with open(self.config_path, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+        except UnicodeDecodeError:
+            with open(self.config_path, 'r', encoding='cp932') as f:
+                lines = f.readlines()
+                
+        lines = ['## ' + line for line in lines]
+        with Path(save_path).open('w', encoding='utf-8') as f:
+            f.writelines(lines)
         
         # then write the prompt file
-        with open(self.file_path, 'r') as f:
-            lines = f.readlines()
-            with Path(save_path).open('a') as f:
-                f.writelines(lines)
+        try:
+            with open(self.file_path, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+        except UnicodeDecodeError:
+            with open(self.file_path, 'r', encoding='cp932') as f:
+                lines = f.readlines()
+                
+        with Path(save_path).open('a', encoding='utf-8') as f:
+            f.writelines(lines)
         
         print('\n#   Context saved to {}'.format(save_name))
     
@@ -278,21 +334,20 @@ class PromptFile:
 
         # check if the file exists
         if filepath.exists():
-            with filepath.open('r') as f:
-                lines = f.readlines()
+            try:
+                with filepath.open('r', encoding='utf-8') as f:
+                    lines = f.readlines()
+            except UnicodeDecodeError:
+                with filepath.open('r', encoding='cp932') as f:
+                    lines = f.readlines()
             
-            # read in the model name from openaiapirc
-            config = configparser.ConfigParser()
-            config.read(API_KEYS_LOCATION)
-            MODEL = config['openai']['model'].strip('"').strip("'")
-
             config = {
-                'model': MODEL,
                 'temperature': float(lines[1].split(':')[1].strip()),
                 'max_tokens': int(lines[2].split(':')[1].strip()),
                 'shell': lines[3].split(':')[1].strip(),
                 'multi_turn': lines[4].split(':')[1].strip(),
-                'token_count': int(lines[5].split(':')[1].strip())
+                'token_count': int(lines[5].split(':')[1].strip()),
+                'language': 'en'  # デフォルト言語は英語
             }
 
             # use new config if old config doesn't exist
@@ -308,7 +363,7 @@ class PromptFile:
             
             # write to the current prompt file if we are in multi-turn mode
             if initialize == False or self.config['multi_turn'] == "off":
-                with open(self.file_path, 'w') as f:
+                with open(self.file_path, 'w', encoding='utf-8') as f:
                     f.writelines(lines)
                 
                 if initialize == False:

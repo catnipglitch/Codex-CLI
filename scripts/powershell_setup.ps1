@@ -23,11 +23,16 @@ param
 
     [Parameter(Mandatory = $false)]
     [string]
-    $OpenAIModelName = "gpt-4o"
+    $OpenAIModelName = "gpt-4o",
+    
+    [Parameter(Mandatory = $false)]
+    [ValidateSet("en", "ja")]
+    [string]
+    $Language = "en"
 )
 
 $plugInScriptPath = Join-Path $RepoRoot -ChildPath "scripts\powershell_plugin.ps1"
-$codexQueryPath = Join-Path $RepoRoot -ChildPath "src\codex_query.py"
+$codexQueryPath = Join-Path $RepoRoot -ChildPath "src\codex_query_fixed.py"
 $openAIConfigPath = Join-Path $RepoRoot -ChildPath "src\openaiapirc"
 
 # 環境変数からAPIキーとOrganization IDを取得
@@ -136,7 +141,29 @@ else {
 (Get-Content -Path $plugInScriptPath) -replace "{{codex_query_path}}", $codexQueryPath | Add-Content -Path $PROFILE
 Write-Host "Added plugin setup to $PROFILE."
 
-# Create OpenAI configuration file to store secrets
+# OpenAIディレクトリのパス
+$openAIDir = Join-Path $HOME -ChildPath ".openai"
+if (!(Test-Path -Path $openAIDir)) {
+    New-Item -Type Directory -Path $openAIDir -Force | Out-Null
+    Write-Host "Created OpenAI directory at $openAIDir"
+}
+
+# codex-cli.jsonファイルへのパス（settings.jsonから変更）
+$settingsJsonPath = Join-Path $openAIDir -ChildPath "codex-cli.json"
+
+# JSON設定を作成
+$settingsJson = @{
+    "organization" = $OpenAIOrganizationId
+    "api_key"      = $openAIApiKeyPlainText
+    "engine"       = $OpenAIModelName
+    "language"     = $Language
+} | ConvertTo-Json
+
+# codex-cli.jsonに保存（settings.jsonから変更）
+Set-Content -Path $settingsJsonPath -Value $settingsJson
+Write-Host "Updated codex-cli.json with API keys and language preference ($Language)"
+
+# 古いOpenAI設定ファイルも更新（後方互換性のため）
 if (!(Test-Path -Path $openAIConfigPath)) {
     New-Item -Type File -Path $openAIConfigPath -Force 
 }
@@ -144,8 +171,9 @@ if (!(Test-Path -Path $openAIConfigPath)) {
 Set-Content -Path $openAIConfigPath "[openai]
 organization_id=$OpenAIOrganizationId
 secret_key=$openAIApiKeyPlainText
-model=$OpenAIModelName"
-Write-Host "Updated OpenAI configuration file with secrets."
+model=$OpenAIModelName
+language=$Language"
+Write-Host "Updated OpenAI configuration file with secrets and language setting."
 
 # デバッグ情報の追加
 Write-Host "セットアップ情報の確認:"
@@ -176,7 +204,6 @@ else {
 Write-Host -ForegroundColor Blue "Codex CLI PowerShell (v$PSMajorVersion) setup completed. Please open a new PowerShell session, type in # followed by your natural language command and hit Ctrl+G!"
 
 Write-Host -ForegroundColor Yellow @"
-
 トラブルシューティング:
 1. 新しいPowerShellセッションを開いたことを確認してください（現在のセッションを閉じて新しいものを開く）
 2. Pythonとその依存関係がインストールされていることを確認してください
@@ -187,3 +214,12 @@ Write-Host -ForegroundColor Yellow @"
    - 'Get-Content $PROFILE' (プロファイルにCodex CLIスクリプトが含まれているか確認)
    - 'Test-Path "$openAIConfigPath"' (設定ファイルが存在するか確認)
 "@
+
+# 追加: 作業中のセッションにプロファイルをロードしてキーバインドを反映
+try {
+    . $PROFILE
+    Write-Host "PowerShellプロファイルを現在のセッションにロードしました。Ctrl+Gをお試しください。" -ForegroundColor Cyan
+}
+catch {
+    Write-Warning "プロファイルのロードに失敗しました。再度PowerShellを開いてください。"
+}
