@@ -15,3 +15,5 @@ openai_test.log
 # Python キャッシュ等
 __pycache__/
 *.py[cod]
+tests/japanese_input.txt
+tests/japanese_test.log
