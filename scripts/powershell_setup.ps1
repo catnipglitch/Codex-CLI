@@ -1,225 +1,66 @@
-### 
-# PowerShell script to setup Codex CLI for PowerShell
-###
-param
-(
-    [Parameter()]
-    [System.IO.FileInfo]
-    [ValidateScript( {
-            if (-Not ($_ | Test-Path) ) {
-                throw "Folder does not exist. Did you clone the Codex CLI repo?" 
-            }
-            return $true
-        })]
-    [string]$RepoRoot = (Get-Location),
+# PowerShell Setup for Codex CLI
+#
+# このファイルはPowerShellプロファイルの準備を行い、
+# Codex CLIのショートカットキーをセットアップします。
 
-    [Parameter(Mandatory = $false)]
-    [SecureString]
-    $OpenAIApiKey,
+# スクリプトのパスを取得
+$scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
+$rootPath = Split-Path -Parent $scriptPath
+$nl_cli_script_path = Join-Path $rootPath "src\codex_query_fixed.py"
 
-    [Parameter(Mandatory = $false)]
-    [string]
-    $OpenAIOrganizationId,
-
-    [Parameter(Mandatory = $false)]
-    [string]
-    $OpenAIModelName = "gpt-4o",
-    
-    [Parameter(Mandatory = $false)]
-    [ValidateSet("en", "ja")]
-    [string]
-    $Language = "en"
-)
-
-$plugInScriptPath = Join-Path $RepoRoot -ChildPath "scripts\powershell_plugin.ps1"
-$codexQueryPath = Join-Path $RepoRoot -ChildPath "src\codex_query_fixed.py"
-$openAIConfigPath = Join-Path $RepoRoot -ChildPath "src\openaiapirc"
-
-# 環境変数からAPIキーとOrganization IDを取得
-$envApiKey = [Environment]::GetEnvironmentVariable("OPENAI_API_KEY")
-$envOrgId = [Environment]::GetEnvironmentVariable("OPENAI_ORGANIZATION_ID")
-$envModel = [Environment]::GetEnvironmentVariable("OPENAI_MODEL") 
-
-# パラメータが空の場合は環境変数から取得
-if (-not $OpenAIApiKey) {
-    if ($envApiKey) {
-        Write-Host "環境変数からAPIキーを取得しました"
-        $OpenAIApiKey = ConvertTo-SecureString $envApiKey -AsPlainText -Force
-    }
-    else {
-        $OpenAIApiKey = Read-Host "OpenAI APIキーを入力してください" -AsSecureString
-    }
+# プロファイルパスの取得
+$profileExists = Test-Path $PROFILE
+if (-not $profileExists) {
+    # プロファイルが存在しない場合は作成
+    New-Item -Type File -Path $PROFILE -Force
+    Write-Host "PowerShellプロファイルが存在しなかったため、作成しました: $PROFILE" -ForegroundColor Green
 }
 
-if (-not $OpenAIOrganizationId) {
-    if ($envOrgId) {
-        Write-Host "環境変数からOrganization IDを取得しました"
-        $OpenAIOrganizationId = $envOrgId
-    }
-    else {
-        $OpenAIOrganizationId = Read-Host "OpenAI Organization IDを入力してください"
-    }
+# プロファイル内容を取得
+$profileContent = Get-Content $PROFILE -Raw
+
+# プラグインファイルへのパス
+$pluginPath = Join-Path $scriptPath "powershell_plugin.ps1"
+$pluginPathWindows = $pluginPath.Replace("\", "\\")
+
+# テンプレートプラグインの内容を取得
+$pluginTemplateContent = Get-Content $pluginPath -Raw
+
+# プラグイン内のパス置換
+$pluginContent = $pluginTemplateContent.Replace("{{codex_query_path}}", $nl_cli_script_path.Replace("\", "\\"))
+
+# プラグインの有効/無効フラグを調べる
+$codexPluginMarkerStart = "### Codex CLI setup - start"
+$codexPluginMarkerEnd = "### Codex CLI setup - end"
+$hasCodexPlugin = $profileContent -match [regex]::Escape($codexPluginMarkerStart)
+
+# バックアップ作成
+$backupPath = $PROFILE + ".codex_backup"
+if (-not (Test-Path $backupPath)) {
+    Copy-Item $PROFILE $backupPath
+    Write-Host "PowerShellプロファイルのバックアップを作成しました: $backupPath" -ForegroundColor Green
 }
 
-if (-not $OpenAIModelName -or $OpenAIModelName -eq "gpt-4o") {
-    if ($envModel) {
-        Write-Host "環境変数からモデル名を取得しました: $envModel"
-        $OpenAIModelName = $envModel
-    }
-    # デフォルト値が設定されているので入力は不要
-}
-
-# The major version of PowerShell
-$PSMajorVersion = $PSVersionTable.PSVersion.Major
-
-# APIキーの検証
-if ($null -eq $OpenAIApiKey -or $OpenAIApiKey.Length -eq 0) {
-    Write-Error "OpenAI APIキーが設定されていません。環境変数OPENAI_API_KEYを設定するか、パラメータで指定してください。"
-    exit 1
-}
-
-# Convert secure string to plain text
-try {
-    if ($PSMajorVersion -lt 7) {
-        $binaryString = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($OpenAIApiKey);
-        $openAIApiKeyPlainText = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($binaryString);
-    }
-    else {
-        $openAIApiKeyPlainText = ConvertFrom-SecureString -SecureString $OpenAIApiKey -AsPlainText
-    }
-
-    if ([string]::IsNullOrEmpty($openAIApiKeyPlainText)) {
-        Write-Error "APIキーの変換に失敗しました。有効なAPIキーを入力してください。"
-        exit 1
-    }
-}
-catch {
-    Write-Error "APIキーの処理中にエラーが発生しました: $_"
-    exit 1
-}
-
-# Check the access with OpenAI API
-Write-Host "Checking OpenAI access..."
-$modelsApiUri = "https://api.openai.com/v1/models"
-$response = $null
-try {
-    if ($PSMajorVersion -lt 7) {
-        $response = (Invoke-WebRequest -Uri $modelsApiUri -Headers @{"Authorization" = "Bearer $openAIApiKeyPlainText"; "OpenAI-Organization" = "$OpenAIOrganizationId" })
-    }
-    else {
-        $response = (Invoke-WebRequest -Uri $modelsApiUri -Authentication Bearer -Token $OpenAIApiKey -Headers @{"OpenAI-Organization" = "$OpenAIOrganizationId" })
-    }
-}
-catch {
-    $statusCode = $_.Exception.Response.StatusCode.value__
-    Write-Error "Failed to access OpenAI api [$statusCode]. Please check your OpenAI API key (https://platform.openai.com/api-keys) and Organization ID (https://platform.openai.com/account/organization)."
-    exit 1
-}
-
-# Check if target model is available to the user
-if ($null -eq (($response.Content | ConvertFrom-Json).data | Where-Object { $_.id -eq $OpenAIModelName })) {
-    Write-Warning "Could not find OpenAI model: $OpenAIModelName in your available models. This might be because the model is not available to your account, or because the API response format has changed."
-    Write-Host "Continuing setup anyway, but you may need to update the model name later."
-}
-
-# Create new PowerShell profile if doesn't exist. The profile type is for current user and current host.
-# To learn more about PowerShell profile, please refer to 
-# https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_profiles
-if (!(Test-Path -Path $PROFILE)) {
-    New-Item -Type File -Path $PROFILE -Force 
+if ($hasCodexPlugin) {
+    # 既存のプラグイン部分を更新
+    $pattern = "(?s)" + [regex]::Escape($codexPluginMarkerStart) + ".*?" + [regex]::Escape($codexPluginMarkerEnd)
+    $profileContent = [regex]::Replace($profileContent, $pattern, $pluginContent)
+    Set-Content -Path $PROFILE -Value $profileContent
+    Write-Host "既存のCodex CLIプラグインを更新しました。" -ForegroundColor Green
 }
 else {
-    # Clean up the content before append new one. This allow users to setup multiple times without running cleanup script
-    (Get-Content -Path $PROFILE -Raw) -replace "(?ms)### Codex CLI setup - start.*?### Codex CLI setup - end", "" | Set-Content -Path $PROFILE
-    Write-Host "Removed previous setup script from $PROFILE."
+    # プラグイン部分がない場合は追加
+    Add-Content -Path $PROFILE -Value "`n$pluginContent"
+    Write-Host "PowerShellプロファイルにCodex CLIプラグインを追加しました。" -ForegroundColor Green
 }
 
-# Add our plugin script into PowerShell profile. It involves three steps:
-# 1. Read the plugin script content,
-# 2. Replace hardcode variable with the actual path to codex_query.py, 
-# 3. Add the plugin script to the content of PowerShell profile.
-(Get-Content -Path $plugInScriptPath) -replace "{{codex_query_path}}", $codexQueryPath | Add-Content -Path $PROFILE
-Write-Host "Added plugin setup to $PROFILE."
-
-# OpenAIディレクトリのパス
-$openAIDir = Join-Path $HOME -ChildPath ".openai"
-if (!(Test-Path -Path $openAIDir)) {
-    New-Item -Type Directory -Path $openAIDir -Force | Out-Null
-    Write-Host "Created OpenAI directory at $openAIDir"
+# PSReadLineモジュールの確認
+if (-not (Get-Module -ListAvailable -Name PSReadLine)) {
+    Write-Warning "PSReadLineモジュールが見つかりません。インストールを推奨します。"
+    Write-Host "インストールするには以下のコマンドを実行してください: Install-Module -Name PSReadLine -AllowPrerelease -Force" -ForegroundColor Yellow
 }
 
-# codex-cli.jsonファイルへのパス（settings.jsonから変更）
-$settingsJsonPath = Join-Path $openAIDir -ChildPath "codex-cli.json"
-
-# JSON設定を作成
-$settingsJson = @{
-    "organization" = $OpenAIOrganizationId
-    "api_key"      = $openAIApiKeyPlainText
-    "engine"       = $OpenAIModelName
-    "language"     = $Language
-} | ConvertTo-Json
-
-# codex-cli.jsonに保存（settings.jsonから変更）
-Set-Content -Path $settingsJsonPath -Value $settingsJson
-Write-Host "Updated codex-cli.json with API keys and language preference ($Language)"
-
-# 古いOpenAI設定ファイルも更新（後方互換性のため）
-if (!(Test-Path -Path $openAIConfigPath)) {
-    New-Item -Type File -Path $openAIConfigPath -Force 
-}
-
-Set-Content -Path $openAIConfigPath "[openai]
-organization_id=$OpenAIOrganizationId
-secret_key=$openAIApiKeyPlainText
-model=$OpenAIModelName
-language=$Language"
-Write-Host "Updated OpenAI configuration file with secrets and language setting."
-
-# デバッグ情報の追加
-Write-Host "セットアップ情報の確認:"
-Write-Host "- プロファイル場所: $PROFILE"
-Write-Host "- 設定ファイル場所: $openAIConfigPath"
-Write-Host "- Pythonスクリプト場所: $codexQueryPath"
-
-# 一般的な問題のトラブルシューティング
-if (!(Test-Path $codexQueryPath)) {
-    Write-Warning "警告: codex_query.py ファイルが見つかりません。リポジトリが正しくクローンされているか確認してください。"
-}
-
-if (!(Get-Command python -ErrorAction SilentlyContinue)) {
-    Write-Warning "警告: Python が見つかりません。Python がインストールされ、PATHに追加されていることを確認してください。"
-}
-else {
-    $pythonVersion = python --version
-    Write-Host "検出されたPythonバージョン: $pythonVersion"
-    
-    # Pythonの依存関係を確認
-    $requirementsPath = Join-Path $RepoRoot -ChildPath "requirements.txt"
-    if (Test-Path $requirementsPath) {
-        Write-Host "requirements.txt が見つかりました。依存関係をインストールするには次のコマンドを実行してください："
-        Write-Host "python -m pip install -r $requirementsPath"
-    }
-}
-
-Write-Host -ForegroundColor Blue "Codex CLI PowerShell (v$PSMajorVersion) setup completed. Please open a new PowerShell session, type in # followed by your natural language command and hit Ctrl+G!"
-
-Write-Host -ForegroundColor Yellow @"
-トラブルシューティング:
-1. 新しいPowerShellセッションを開いたことを確認してください（現在のセッションを閉じて新しいものを開く）
-2. Pythonとその依存関係がインストールされていることを確認してください
-   - 'python -m pip install -r $(Join-Path $RepoRoot -ChildPath "requirements.txt")'
-3. '#' の後に自然言語コマンドを入力し、Ctrl+Gを押してください
-4. それでも動作しない場合は、以下のコマンドを実行してエラーをチェックしてください:
-   - 'Test-Path $PROFILE' (Trueが返るべき)
-   - 'Get-Content $PROFILE' (プロファイルにCodex CLIスクリプトが含まれているか確認)
-   - 'Test-Path "$openAIConfigPath"' (設定ファイルが存在するか確認)
-"@
-
-# 追加: 作業中のセッションにプロファイルをロードしてキーバインドを反映
-try {
-    . $PROFILE
-    Write-Host "PowerShellプロファイルを現在のセッションにロードしました。Ctrl+Gをお試しください。" -ForegroundColor Cyan
-}
-catch {
-    Write-Warning "プロファイルのロードに失敗しました。再度PowerShellを開いてください。"
-}
+Write-Host "`nセットアップが完了しました。" -ForegroundColor Cyan
+Write-Host "Ctrl+G キーを押すと、自然言語をコマンドに変換できます。" -ForegroundColor Cyan
+Write-Host "または、Invoke-Codex 'クエリ' でも直接実行できます。" -ForegroundColor Cyan
+Write-Host "`n新しいPowerShellセッションを開始するか、以下のコマンドを実行してください: . $PROFILE" -ForegroundColor Yellow

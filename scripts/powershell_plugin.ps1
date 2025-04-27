@@ -20,28 +20,18 @@ function global:SendToCodex {
     try {
         Write-Host "# Codex CLI処理中..." -ForegroundColor Cyan
         
-        # バッファをUTF-8エンコードでエンコード
-        $bufferBytes = [System.Text.Encoding]::UTF8.GetBytes($buffer)
-        $encodedBuffer = [System.Text.Encoding]::UTF8.GetString($bufferBytes)
+        # 一時ファイルを使用する方法に変更（パイプ処理の問題を回避）
+        $tempFile = [System.IO.Path]::GetTempFileName()
         
-        # 直接パイプを使用してPythonスクリプトに渡す
-        $output = $encodedBuffer | & python -u $nl_cli_script
+        # バッファの内容をUTF-8エンコードで一時ファイルに書き込み
+        [System.IO.File]::WriteAllText($tempFile, $buffer, [System.Text.Encoding]::UTF8)
         
-        if ($null -eq $output -or $output -eq "") {
-            # 出力が空の場合、直接実行を試みる
-            Write-Host "# パイプ経由での実行に失敗しました。直接実行を試みます..." -ForegroundColor Yellow
-            
-            # 一時ファイルを使用
-            $tempFile = [System.IO.Path]::GetTempFileName()
-            [System.IO.File]::WriteAllText($tempFile, $buffer, [System.Text.Encoding]::UTF8)
-            
-            # 直接実行
-            $output = & python -u $nl_cli_script $tempFile
-            
-            # 一時ファイルを削除
-            if (Test-Path $tempFile) {
-                Remove-Item $tempFile -Force
-            }
+        # 直接--fileオプションでPythonスクリプトに渡す
+        $output = & python -u $nl_cli_script "--file" "$tempFile" 2>&1
+        
+        # 一時ファイルを削除
+        if (Test-Path $tempFile) {
+            Remove-Item $tempFile -Force
         }
         
         if ($null -eq $output -or $output -eq "") {
@@ -55,6 +45,64 @@ function global:SendToCodex {
     catch {
         Write-Host "# エラー: $($_.Exception.Message)" -ForegroundColor Red
         return "# エラー: $($_.Exception.Message)"
+    }
+}
+
+# 新しい Invoke-Codex 関数 - コマンドラインからの直接呼び出し用
+function global:Invoke-Codex {
+    [CmdletBinding()]
+    param(
+        [Parameter(ValueFromPipeline = $true, Position = 0)]
+        [string]$Query
+    )
+
+    begin {
+        # Codexスクリプトのパスを取得
+        $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
+        $scriptRoot = Split-Path -Parent $scriptPath
+        $codexPath = Join-Path $scriptRoot "src\codex_query_fixed.py"
+        
+        # 一時ファイルのパス
+        $tempQueryFile = [System.IO.Path]::GetTempFileName()
+        Write-Debug "一時ファイル: $tempQueryFile"
+    }
+
+    process {
+        try {
+            # クエリ文字列の処理
+            if ([string]::IsNullOrWhiteSpace($Query)) {
+                # パイプ入力がない場合、対話的に入力を促す
+                Write-Host "# 何について調べますか？ > " -NoNewline -ForegroundColor Cyan
+                $Query = Read-Host
+            }
+
+            if ([string]::IsNullOrWhiteSpace($Query)) {
+                Write-Host "# エラー: クエリが空です" -ForegroundColor Red
+                return
+            }
+            
+            # クエリを一時ファイルに保存（文字コード問題を回避）
+            $Query | Out-File -Encoding utf8 -FilePath $tempQueryFile
+            Write-Host "# Codex CLI処理中..." -ForegroundColor Cyan
+            
+            # Pythonスクリプトを実行（引数で一時ファイルを指定）
+            python $codexPath "--file" $tempQueryFile
+            
+            # エラー処理
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "# エラー: Codex CLIの実行に失敗しました (終了コード: $LASTEXITCODE)" -ForegroundColor Red
+            }
+        }
+        catch {
+            Write-Host "# エラー: $($_.Exception.Message)" -ForegroundColor Red
+            Write-Debug $_.Exception.StackTrace
+        }
+        finally {
+            # 一時ファイルの削除
+            if (Test-Path $tempQueryFile) {
+                Remove-Item -Path $tempQueryFile -Force
+            }
+        }
     }
 }
 
@@ -93,6 +141,6 @@ if (Get-Module -ListAvailable -Name PSReadLine) {
 } 
 else {
     Write-Error "PSReadLine モジュールが見つかりません。Codex CLI のキーバインディングは機能しません。"
-    Write-Host "代わりに、次のように直接呼び出せます: SendToCodex '# コマンド'" -ForegroundColor Yellow
+    Write-Host "代わりに、次のように直接呼び出せます: Invoke-Codex '何について調べますか？'" -ForegroundColor Yellow
 }
 ### Codex CLI setup - end
