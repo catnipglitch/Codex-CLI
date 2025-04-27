@@ -29,13 +29,25 @@
 * 完全な機能を使用するには: Windows PowerShell（CoreまたはWindows PowerShell 5.1+）
 
 ## 環境変数
-APIキーと組織IDは、以下の環境変数を使用して構成することもできます。
+APIキーと組織IDは、以下の環境変数を使用して構成する必要があります。
 
-* `OPENAI_API_KEY` - あなたのOpenAI APIキー
+* `OPENAI_API_KEY` - あなたのOpenAI APIキー（必須）
 * `OPENAI_ORGANIZATION_ID` - あなたのOpenAI Organization ID（省略可能）
 * `OPENAI_MODEL` - 使用するモデル名（省略可能、デフォルトは`gpt-4o`）
 
-環境変数が設定されていない場合、設定中に入力されたAPIキーが設定ファイルから使用されます。
+環境変数の設定例：
+
+PowerShellでの設定:
+```powershell
+$env:OPENAI_API_KEY = "your_api_key_here"
+$env:OPENAI_ORGANIZATION_ID = "your_org_id_here"  # 省略可能
+```
+
+Bash/Zshでの設定:
+```bash
+export OPENAI_API_KEY="your_api_key_here"
+export OPENAI_ORGANIZATION_ID="your_org_id_here"  # 省略可能
+```
 
 ## インストール
 
@@ -57,16 +69,14 @@ Codex CLIを実行するために、Pythonがインストールされている�
 python -m pip install -r requirements.txt
 ```
 
-さらに、Codex CLIツールを実行するには、OpenAI APIキーとモデル名が必要です。Organization IDは省略可能です（複数の組織に所属している場合のみ必要）。
-
 OpenAI APIキー情報を取得するには、(https://platform.openai.com/api-keys) にアクセスしてアカウントにログインしてください。
 
 ログインすると、次の画面が表示されます：
 ![](images/OpenAI-apikey.png)
 
-_Copy_ ボタンをクリックしてAPIキーをコピーし、後で取り出せる場所に保存してください。
+_Copy_ ボタンをクリックしてAPIキーをコピーし、環境変数として設定してください。
 
-もし複数のOpenAI組織に所属していて、特定の組織でAPIを使用したい場合は、OpenAI設定ページ(https://platform.openai.com/account/organization)にアクセスし、_Organization ID_見出しの下に表示されているIDをコピーしてください。前のステップで保存したAPIキーと一緒にコピーしたIDを保存してください。
+もし複数のOpenAI組織に所属していて、特定の組織でAPIを使用したい場合は、OpenAI設定ページ(https://platform.openai.com/account/organization)にアクセスし、_Organization ID_見出しの下に表示されているIDをコピーしてください。
 
 参考のため、以下の画像をご覧ください：
 ![](images/OpenAI-orgid.png)
@@ -80,17 +90,17 @@ OpenAIモデル名については、最良の結果を得るために `gpt-4o` �
 
 Codex CLIは以下の設定ファイルを使用します：
 
-**~/.openai/codex-cli.json** - API認証情報と設定を含む設定ファイル：
+**~/.openai/codex-cli.json** - 言語設定とモデル情報を含む設定ファイル：
 ```json
 {
-  "api_key": "YOUR_API_KEY",
-  "organization": "YOUR_ORGANIZATION_ID",
   "model": "gpt-4o",
-  "language": "en"  // 言語設定: "en"（英語）または "ja"（日本語）
+  "language": "ja"  // 言語設定: "en"（英語）または "ja"（日本語）
 }
 ```
 
 `language`設定は、コマンド生成時に使用されるシステムプロンプトの言語を決定します。指定されていない場合、デフォルトで英語が使用されます。
+
+**注意**: APIキーや組織IDは設定ファイルではなく環境変数から取得されます。
 
 ### PowerShellの手順
 
@@ -109,13 +119,7 @@ Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 実行ポリシーの詳細については、
 [about_Execution_Policies](https://docs.microsoft.com/powershell/module/microsoft.powershell.core/about/about_execution_policies)を参照してください。
 
-3. 同じPowerShellターミナルで、`C:\your\custom\path\Codex-CLI\`（クローンしたCodex CLIプロジェクトが含まれるフォルダ）に移動します。次のコマンドをコピーし、`YOUR_OPENAI_ORGANIZATION_ID`（省略可能）と`MODEL_NAME`をOpenAI組織IDとOpenAIモデル名に置き換えます。コマンドを実行してPowerShell環境をセットアップします。OpenAIアクセスキーの入力を求められます。
-
-```PowerShell
-.\scripts\powershell_setup.ps1 -OpenAIOrganizationId 'YOUR_OPENAI_ORGANIZATION_ID' -OpenAIModelName 'gpt-4o'
-```
-
-または、組織IDが不要な場合は、次のように簡略化したコマンドも使用できます：
+3. 同じPowerShellターミナルで、`C:\your\custom\path\Codex-CLI\`（クローンしたCodex CLIプロジェクトが含まれるフォルダ）に移動します。以下のコマンドを実行してPowerShell環境をセットアップします：
 
 ```PowerShell
 .\scripts\powershell_setup.ps1 -OpenAIModelName 'gpt-4o'
@@ -123,12 +127,26 @@ Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;スクリプトパラメータについては[powershell_setup.ps1について](#powershell_setupps1について)セクションを参照してください。
 
-4. 新しいPowerShellセッションを開き、`#`に続いて自然言語コマンドを入力し、`Ctrl + G`を押します！
+4. 環境変数を設定します：
+
+```PowerShell
+$env:OPENAI_API_KEY = "your_api_key_here"
+$env:OPENAI_ORGANIZATION_ID = "your_org_id_here"  # 省略可能
+```
+
+5. 新しいPowerShellセッションを開き、`#`に続いて自然言語コマンドを入力し、`Ctrl + G`を押します！
 
 #### クリーンアップ
 使用が終わったら、`C:\your\custom\path\`（クローンしたCodex CLIプロジェクトが含まれるフォルダ）に移動し、次のコマンドを実行してクリーンアップします。
 ```
 .\scripts\powershell_cleanup.ps1
+```
+
+これにより、設定ファイルからAPIキーや組織IDの情報が削除されます。また、環境変数も削除することをお勧めします：
+
+```PowerShell
+Remove-Item Env:OPENAI_API_KEY -ErrorAction SilentlyContinue
+Remove-Item Env:OPENAI_ORGANIZATION_ID -ErrorAction SilentlyContinue
 ```
 
 実行ポリシーを元に戻す場合は、このコマンドを実行します
@@ -140,7 +158,17 @@ Set-ExecutionPolicy Undefined -Scope CurrentUser
 
 セットアップが正常に完了したにもかかわらず、Codex CLIが動作しない場合は、以下の問題を確認してください：
 
-1. **Ctrl+G キーバインディングの競合**:
+1. **環境変数が設定されていない**:
+   ```PowerShell
+   # 環境変数が正しく設定されているか確認
+   echo $env:OPENAI_API_KEY
+   echo $env:OPENAI_ORGANIZATION_ID
+   
+   # 設定されていない場合は設定
+   $env:OPENAI_API_KEY = "your_api_key_here"
+   ```
+
+2. **Ctrl+G キーバインディングの競合**:
    
    VSCode、ブラウザ、または他のアプリケーションがCtrl+Gキーを使用している場合、以下の方法で対処できます：
    
@@ -164,17 +192,17 @@ Set-ExecutionPolicy Undefined -Scope CurrentUser
    b. **一時的にアプリケーションを終了**:
       Ctrl+Gキーを使用している他のアプリケーションを一時的に閉じてみてください。
 
-2. **Python関連の問題**:
+3. **Python関連の問題**:
    - Pythonがインストールされて、PATHに設定されていることを確認
    - 必要なパッケージがインストールされていることを確認：
      ```
      python -m pip install -r <リポジトリパス>/requirements.txt
      ```
      
-3. **設定ファイルの確認**:
+4. **設定ファイルの確認**:
    以下のファイルが存在し、正しく設定されていることを確認します：
    - $PROFILE（PowerShellプロファイル）
-   - $HOME/.openai/settings.json（OpenAI設定ファイル）
+   - $HOME/.openai/codex-cli.json（設定ファイル）
    
    設定を確認するには：
    ```PowerShell
@@ -185,14 +213,14 @@ Set-ExecutionPolicy Undefined -Scope CurrentUser
    Get-Content -Path "$HOME/.openai/codex-cli.json" -ErrorAction SilentlyContinue
    ```
 
-4. **手動でコマンドを実行**:
+5. **手動でコマンドを実行**:
    PowerShellプロファイルに追加された関数を手動で呼び出してみてください：
    ```PowerShell
    Invoke-Codex "ディレクトリの内容をリストアップする"
    ```
    エラーメッセージが表示された場合は、具体的な問題を特定するのに役立ちます。
 
-5. **診断スクリプトの実行**:
+6. **診断スクリプトの実行**:
    問題が続く場合は、診断スクリプトを実行してください：
    ```powershell
    .\scripts\debug_setup.ps1
@@ -200,13 +228,11 @@ Set-ExecutionPolicy Undefined -Scope CurrentUser
 
 #### powershell_setup.ps1について
 `powershell_setup.ps1`は以下のパラメータをサポートしています：
-| パラメータ              | 型                                                                                       | 説明                                                                                                                                                                                                                                                                                                                                                |
-| ----------------------- | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `-OpenAIApiKey`         | [SecureString](https://docs.microsoft.com/en-us/dotnet/api/system.security.securestring) | 必須。提供されない場合、スクリプトは値の入力を求めます。この値は[https://platform.openai.com/api-keys](https://platform.openai.com/api-keys)で確認できます。PowerShellパラメータを通じて値を提供するには、PowerShell 7の例：<br/> `.\scripts\powershell_setup.ps1 -OpenAIApiKey (ConvertTo-SecureString "YOUR_OPENAI_API_KEY" -AsPlainText -Force)` |
-| `-OpenAIOrganizationId` | String                                                                                   | オプション。複数の組織に所属している場合のみ必要。あなたの[OpenAI organization Id](https://platform.openai.com/account/org-settings)。                                                                                                                                                                                                              |
-| `-OpenAIModelName`      | String                                                                                   | 必須。OpenAIモデル名（例：`gpt-4o`）。モデルへのアクセスを提供します。                                                                                                                                                                                                                                                                              |
-| `-Language`             | String                                                                                   | オプション。使用する言語を指定します（例：`ja`、`en`）。デフォルトは`en`（英語）です。日本語のメッセージを表示するには`ja`を指定してください。                                                                                                                                                                                                      |
-| `-RepoRoot`             | [FileInfo](https://docs.microsoft.com/en-us/dotnet/api/system.io.fileinfo)               | オプション。デフォルトでは現在のフォルダ。<br>値はCodex CLIフォルダのパスである必要があります。例：<br/>`.\scripts\powershell_setup.ps1 -RepoRoot 'C:\your\custom\path'`                                                                                                                                                                            |
+| パラメータ         | 型                                                                         | 説明                                                                                                                                                                     |
+| ------------------ | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `-OpenAIModelName` | String                                                                     | オプション。OpenAIモデル名（例：`gpt-4o`）。モデルへのアクセスを提供します。デフォルトは`gpt-4o`です。                                                                   |
+| `-Language`        | String                                                                     | オプション。使用する言語を指定します（例：`ja`、`en`）。デフォルトは`ja`（日本語）です。                                                                                 |
+| `-RepoRoot`        | [FileInfo](https://docs.microsoft.com/en-us/dotnet/api/system.io.fileinfo) | オプション。デフォルトでは現在のフォルダ。<br>値はCodex CLIフォルダのパスである必要があります。例：<br/>`.\scripts\powershell_setup.ps1 -RepoRoot 'C:\your\custom\path'` |
 
 ### Bashの手順（実験的 - 動作未確認）
 
@@ -228,15 +254,21 @@ WSLおよびLinux環境でBashを使用してCodex CLIを活用するには、�
 
     Codex CLIフォルダには、`scripts`という名前のフォルダがあり、その中にBash環境をセットアップするための`bash_setup.sh`スクリプトがあります。
 
-    環境をセットアップするために次のコマンドを実行してください。スクリプトは組織ID、APIキー、エンジンIDの入力を求めます：
+    環境をセットアップするために次のコマンドを実行してください：
     ```
     cd scripts
-    source bash_setup.sh
+    source bash_setup.sh -e gpt-4o
     ```
     
     スクリプトはOpenAI設定ファイルを作成し、Bash環境を更新します。
 
-4. 新しいBashターミナルを開きます。`#`に続いて自然言語でリクエストを入力します。`Ctrl + G`を押して実行します！
+4. 環境変数を設定します：
+    ```bash
+    export OPENAI_API_KEY="your_api_key_here"
+    export OPENAI_ORGANIZATION_ID="your_org_id_here"  # 省略可能
+    ```
+
+5. 新しいBashターミナルを開きます。`#`に続いて自然言語でリクエストを入力します。`Ctrl + G`を押して実行します！
 
 #### クリーンアップ
 
@@ -244,23 +276,28 @@ Codex CLIツールの使用が終わったら、Codex CLIコードが含まれ�
 ```
 source ./scripts/bash_cleanup.sh
 ```
+
+環境変数を削除するには：
+```bash
+unset OPENAI_API_KEY
+unset OPENAI_ORGANIZATION_ID
+```
+
 終了したら、ターミナルセッションを閉じます。
 
 #### bash_setup.shについて
 
-デフォルトでは、`bash_setup.sh`は必要な設定の入力を求めます。コマンドラインから以下のパラメータを使用して、これらの値を渡すこともできます：
+`bash_setup.sh`は以下のパラメータをサポートしています：
 
-| パラメータ   | 説明                                                                                                                                 |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `-o <value>` | [OpenAI Organization Id](https://beta.openai.com/account/org-settings)を渡すため（オプション：複数の組織に所属している場合のみ必要） |
-| `-k <value>` | [OpenAI APIキー](https://beta.openai.com/account/api-keys)を渡すため（必須）                                                         |
-| `-e <value>` | OpenAIモデル名を指定するため（例：`gpt-4o`）（必須）                                                                                 |
-| `-l <value>` | 言語設定（例：`ja`、`en`）。デフォルトは`en`（英語）です                                                                             |
+| パラメータ   | 説明                                                     |
+| ------------ | -------------------------------------------------------- |
+| `-e <value>` | OpenAIモデル名を指定するため（例：`gpt-4o`）（必須）     |
+| `-l <value>` | 言語設定（例：`ja`、`en`）。デフォルトは`en`（英語）です |
 
 例：
 
 ```
-source bash_setup.sh -o myorgid -k myapikey -e gpt-4o -l ja
+source bash_setup.sh -e gpt-4o -l ja
 ```
 
 Codex CLI Bashセットアップの実行に関するヘルプについては、次のコマンドを実行してください：
@@ -278,13 +315,20 @@ source bash_setup.sh -h
 $ git clone https://github.com/microsoft/Codex-CLI.git ~/your/custom/path/
 ```
 
-2. zshで、`~/your/custom/path/`（Codex CLIコードが含まれるフォルダ）に移動し、次のコマンドを実行してzsh環境をセットアップします。スクリプトは組織ID、APIキー、モデル名の入力を求めます：
+2. zshで、`~/your/custom/path/`（Codex CLIコードが含まれるフォルダ）に移動し、次のコマンドを実行してzsh環境をセットアップします：
 
 ```
-./scripts/zsh_setup.sh
+./scripts/zsh_setup.sh -e gpt-4o
 ```
 
-3. `zsh`を実行し、入力を開始して`^G`（Ctrl+G）で完了します！
+3. 環境変数を設定します：
+
+```bash
+export OPENAI_API_KEY="your_api_key_here"
+export OPENAI_ORGANIZATION_ID="your_org_id_here"  # 省略可能
+```
+
+4. `zsh`を実行し、入力を開始して`^G`（Ctrl+G）で完了します！
 
 #### クリーンアップ
 使用が終わったら、`~/your/custom/path/`（Codex CLIコードが含まれるフォルダ）に移動し、次のコマンドを実行してクリーンアップします。
@@ -292,39 +336,43 @@ $ git clone https://github.com/microsoft/Codex-CLI.git ~/your/custom/path/
 ./scripts/zsh_cleanup.sh
 ```
 
+環境変数を削除するには：
+```bash
+unset OPENAI_API_KEY
+unset OPENAI_ORGANIZATION_ID
+```
+
 #### zsh_setup.shについて
 `zsh_setup.sh`は以下のパラメータをサポートしています：
-| パラメータ   | 説明                                                                                                                                 |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `-o <value>` | [OpenAI Organization Id](https://beta.openai.com/account/org-settings)を渡すため（オプション：複数の組織に所属している場合のみ必要） |
-| `-k <value>` | [OpenAI APIキー](https://beta.openai.com/account/api-keys)を渡すため（必須）                                                         |
-| `-e <value>` | OpenAIモデル名を指定するため（例：`gpt-4o`）（必須）                                                                                 |
-| `-l <value>` | 言語設定（例：`ja`、`en`）。デフォルトは`en`（英語）です                                                                             |
+| パラメータ   | 説明                                                     |
+| ------------ | -------------------------------------------------------- |
+| `-e <value>` | OpenAIモデル名を指定するため（例：`gpt-4o`）（必須）     |
+| `-l <value>` | 言語設定（例：`ja`、`en`）。デフォルトは`en`（英語）です |
 
 ### セキュリティ情報の保存場所
 
-入力したOpenAI APIキーなどの情報は、各シェル環境に応じて以下の場所に保存されます：
+入力したOpenAI APIキーなどの情報は環境変数として保存されます。また、言語設定やモデル情報は各シェル環境に応じて以下の場所に保存されます：
 
 #### PowerShellでの保存先
-PowerShellを使用している場合、APIキーと関連情報は次のファイルに保存されます：
+PowerShellを使用している場合、設定情報は次のファイルに保存されます：
 ```
 $HOME/.openai/codex-cli.json
 ```
 (Windowsでは通常 `C:\Users\ユーザー名\.openai\codex-cli.json`)
 
 #### Bashでの保存先
-Bashを使用している場合、APIキーと関連情報は次のファイルに保存されます：
+Bashを使用している場合、設定情報は次のファイルに保存されます：
 ```
 ~/.openai/settings.json
 ```
 
 #### Zshでの保存先 
-Zshを使用している場合、APIキーと関連情報は次のファイルに保存されます：
+Zshを使用している場合、設定情報は次のファイルに保存されます：
 ```
 ~/.openai/settings.json
 ```
 
-これらの設定ファイルは、各シェル環境のクリーンアッププロセス（例：`bash_cleanup.sh`、`zsh_cleanup.sh`、`powershell_cleanup.ps1`）を実行すると、適切に削除または初期化されます。セキュリティのために、使用が終わったらクリーンアップスクリプトを実行することをお勧めします。
+これらの設定ファイルは、各シェル環境のクリーンアッププロセス（例：`bash_cleanup.sh`、`zsh_cleanup.sh`、`powershell_cleanup.ps1`）を実行すると、適切に削除または初期化されます。セキュリティのために、使用が終わったらクリーンアップスクリプトを実行してAPIキーの環境変数を削除することをお勧めします。
 
 ## 最近の更新
 
@@ -334,6 +382,7 @@ Zshを使用している場合、APIキーと関連情報は次のファイル�
 - **多言語サポート**: 英語と日本語のインターフェースをサポート
 - **シェル検出**: シェル環境を自動的に検出（現在はPowerShellに最適化）
 - **改善されたUTF-8サポート**: 非ASCII文字の処理が向上
+- **環境変数ベースの認証**: APIキーと組織IDは環境変数から取得されるようになりました
 
 ## 使用方法
 
@@ -420,7 +469,7 @@ GPT-4oは例がなくても正しいスクリプトを生成することがよ�
 
 ### よくある問題
 - **Ctrl+Gを押しても応答がない**: クエリが`#`で始まり、その後にスペースがあることを確認してください
-- **APIキーがないというエラー**: `~/.openai/codex-cli.json`ファイルが存在し、有効な認証情報があることを確認してください
+- **APIキーがないというエラー**: 環境変数`OPENAI_API_KEY`が正しく設定されているか確認してください
 - **日本語テキストが正しく表示されない**: コンソールがUTF-8エンコーディングに設定されていることを確認してください
 
 ### デバッグ
@@ -467,16 +516,13 @@ Codex CLIプロジェクトには、PowerShell環境のセットアップや管�
 このスクリプトはCodex CLIをPowerShell環境にセットアップするためのメインスクリプトです。具体的に次の処理を行います：
 - PowerShellプロファイル（`$PROFILE`）の作成または更新
 - `PSReadLine`モジュールの確認（キーバインディングに必要）
-- OpenAI APIキー、組織ID、モデル名の設定
+- OpenAIモデル名の設定
 - 設定ファイル（`~/.openai/codex-cli.json`）の作成
 
 使用例：
 ```powershell
 # 基本的な使用方法
 .\scripts\powershell_setup.ps1 -OpenAIModelName 'gpt-4o'
-
-# 組織IDを指定する場合
-.\scripts\powershell_setup.ps1 -OpenAIOrganizationId 'YOUR_ORG_ID' -OpenAIModelName 'gpt-4o'
 
 # カスタムリポジトリパスを指定する場合
 .\scripts\powershell_setup.ps1 -RepoRoot 'C:\path\to\repo' -OpenAIModelName 'gpt-4o'
@@ -486,8 +532,7 @@ Codex CLIプロジェクトには、PowerShell環境のセットアップや管�
 このスクリプトはCodex CLIの設定をすべて削除し、PowerShell環境を元の状態に戻します。以下の処理を行います：
 - PowerShellプロファイルからCodex CLI関連の設定を削除
 - OpenAI API設定ファイルの削除
-- `~/.openai/codex-cli.json`ファイルの削除
-- 古い設定ファイル（`~/.openai/settings.json`）の削除（後方互換性のため）
+- `~/.openai/codex-cli.json`ファイルの更新（APIキー情報を削除）
 
 使用例：
 ```powershell
@@ -495,22 +540,11 @@ Codex CLIプロジェクトには、PowerShell環境のセットアップや管�
 ```
 実行後はPowerShellを再起動して変更を反映させてください。
 
-### scripts\fix_install.ps1
-このスクリプトはCodex CLIのインストールで問題が発生した場合に使用する修復ツールです。主に以下の処理を行います：
-- OpenAIライブラリを最新バージョンにアップデート
-- 修正版スクリプト（`codex_query_fixed.py`）の適用
-- PowerShellセットアップの再実行
+### scripts\debug_setup.ps1
+問題のトラブルシューティングのために使用される診断スクリプトです。Codex CLIが正しく動作しない場合は、このスクリプトを実行して環境設定やパスの問題を特定できます：
 
-使用例：
 ```powershell
-# 基本的な使用方法
-.\scripts\fix_install.ps1
-
-# リポジトリのルートパスを指定する場合
-.\scripts\fix_install.ps1 -RepoRoot 'C:\path\to\repo'
-
-# 別のモデル名を指定する場合
-.\scripts\fix_install.ps1 -OpenAIModelName 'gpt-3.5-turbo'
+.\scripts\debug_setup.ps1
 ```
 
 ### scripts\powershell_plugin.ps1
@@ -520,10 +554,3 @@ Codex CLIプロジェクトには、PowerShell環境のセットアップや管�
 - Ctrl+Gキーバインディングの設定
 
 このファイルを直接編集する必要はありませんが、キーバインディングをカスタマイズしたい場合などに参考にできます。
-
-### scripts\debug_setup.ps1
-問題のトラブルシューティングのために使用される診断スクリプトです。Codex CLIが正しく動作しない場合は、このスクリプトを実行して環境設定やパスの問題を特定できます：
-
-```powershell
-.\scripts\debug_setup.ps1
-```
