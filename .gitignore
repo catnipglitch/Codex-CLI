@@ -17,3 +17,5 @@ __pycache__/
 *.py[cod]
 tests/japanese_input.txt
 tests/japanese_test.log
+
+backup/
