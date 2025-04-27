@@ -55,22 +55,8 @@ if (Test-Path $setupScript) {
         # PowerShellセットアップスクリプトを実行
         Write-Host "PowerShellプロファイルを設定中..."
         
-        # API Keyの入力を促す
-        Write-Host "OpenAI APIキーを入力してください:" -ForegroundColor Yellow
-        $apiKey = Read-Host -AsSecureString
-        
-        # 組織IDの入力（オプショナル）
-        Write-Host "OpenAI Organization ID（省略可能）を入力してください:" -ForegroundColor Yellow
-        $orgId = Read-Host
-        
-        if ([string]::IsNullOrWhiteSpace($orgId)) {
-            # 組織IDなしでセットアップ
-            & $setupScript -OpenAIApiKey $apiKey -OpenAIModelName $OpenAIModelName -RepoRoot $RepoRoot
-        }
-        else {
-            # 組織IDありでセットアップ
-            & $setupScript -OpenAIApiKey $apiKey -OpenAIOrganizationId $orgId -OpenAIModelName $OpenAIModelName -RepoRoot $RepoRoot
-        }
+        # モデル名と一緒にセットアップスクリプトを実行
+        & $setupScript -OpenAIModelName $OpenAIModelName -RepoRoot $RepoRoot
         
         Write-Host "PowerShellセットアップが完了しました" -ForegroundColor Green
     }
@@ -84,7 +70,11 @@ else {
 }
 
 Write-Host "`n修正プロセスが完了しました。以下の手順に従ってください:" -ForegroundColor Cyan
-Write-Host "1. 新しいPowerShellウィンドウを開いてください"
-Write-Host "2. 次のように入力してテストしてください: '# 現在の時刻を表示'"
-Write-Host "3. Ctrl+Gを押して実行してください" 
-Write-Host "4. それでも動作しない場合は、デバッグログを確認してください: $LOG_FILE"
+Write-Host "1. 以下の環境変数を設定してください:" -ForegroundColor Yellow
+Write-Host "   - OPENAI_API_KEY: OpenAI APIキー" -ForegroundColor Yellow
+Write-Host "   - OPENAI_ORGANIZATION_ID: OpenAI Organization ID (省略可能)" -ForegroundColor Yellow
+Write-Host "   例: `$env:OPENAI_API_KEY = 'your_api_key_here'" -ForegroundColor Yellow
+Write-Host "2. 新しいPowerShellウィンドウを開いてください" -ForegroundColor Yellow
+Write-Host "3. 次のように入力してテストしてください: '# 現在の時刻を表示'" -ForegroundColor Yellow
+Write-Host "4. Ctrl+Gを押して実行してください" -ForegroundColor Yellow
+Write-Host "5. それでも動作しない場合は、デバッグログを確認してください: $LOG_FILE" -ForegroundColor Yellow

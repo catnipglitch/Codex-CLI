@@ -81,42 +81,23 @@ if (-not (Test-Path $codexConfigDir)) {
     Write-Host "設定ディレクトリを作成しました: $codexConfigDir" -ForegroundColor Green
 }
 
-if (-not (Test-Path $codexConfigPath)) {
-    # OpenAI APIキーの入力を促す
-    $apiKey = ""
-    While ([string]::IsNullOrWhiteSpace($apiKey)) {
-        $apiKey = Read-Host "OpenAI APIキーを入力してください (https://platform.openai.com/api-keys より取得)"
-    }
-    
-    # 組織IDは任意
-    $orgId = Read-Host "OpenAI Organization IDを入力してください (省略可能)"
-    
-    # 設定ファイル作成
-    $configJson = @{
-        api_key      = $apiKey
-        organization = $orgId
-        model        = $OpenAIModelName
-        language     = "ja"  # デフォルト言語
-    } | ConvertTo-Json
+# 設定ファイルがあるかどうかに関わらず、言語設定のみの設定ファイルを作成/更新
+$configJson = @{
+    model    = $OpenAIModelName
+    language = "ja"  # デフォルト言語
+} | ConvertTo-Json
 
-    Set-Content -Path $codexConfigPath -Value $configJson -Encoding UTF8
-    Write-Host "設定ファイルを作成しました: $codexConfigPath" -ForegroundColor Green
-}
-else {
-    Write-Host "既存の設定ファイルを使用します: $codexConfigPath" -ForegroundColor Green
-    # 既存ファイルのモデルを更新
-    try {
-        $configJson = Get-Content -Path $codexConfigPath -Raw | ConvertFrom-Json
-        if ($configJson.model -ne $OpenAIModelName) {
-            $configJson.model = $OpenAIModelName
-            $configJson | ConvertTo-Json | Set-Content -Path $codexConfigPath -Encoding UTF8
-            Write-Host "設定ファイルのモデルを更新しました: $OpenAIModelName" -ForegroundColor Green
-        }
-    }
-    catch {
-        Write-Warning "設定ファイルの更新中にエラーが発生しました: $_"
-    }
-}
+Set-Content -Path $codexConfigPath -Value $configJson -Encoding UTF8
+Write-Host "言語設定ファイルを更新しました: $codexConfigPath" -ForegroundColor Green
+
+Write-Host "`n環境変数の設定が必要です:" -ForegroundColor Yellow
+Write-Host "APIキーと組織IDは環境変数から取得されるようになりました。以下の環境変数を設定してください:" -ForegroundColor Yellow
+Write-Host "  - OPENAI_API_KEY: OpenAI APIキー (必須)" -ForegroundColor Yellow
+Write-Host "  - OPENAI_ORGANIZATION_ID: OpenAI 組織ID (省略可能)" -ForegroundColor Yellow
+Write-Host "  - OPENAI_MODEL: OpenAIモデル名 (省略可能、デフォルト: $OpenAIModelName)" -ForegroundColor Yellow
+Write-Host "`nPowerShellでの環境変数設定例:" -ForegroundColor Cyan
+Write-Host '  $env:OPENAI_API_KEY="your_api_key_here"' -ForegroundColor Cyan
+Write-Host '  $env:OPENAI_ORGANIZATION_ID="your_org_id_here"  # 省略可能' -ForegroundColor Cyan
 
 Write-Host "`nセットアップが完了しました。" -ForegroundColor Cyan
 Write-Host "Ctrl+G キーを押すと、自然言語をコマンドに変換できます。" -ForegroundColor Cyan

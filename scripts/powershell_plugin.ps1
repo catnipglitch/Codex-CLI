@@ -17,6 +17,12 @@ function global:SendToCodex {
         return "`nnotepad $profile"
     }
 
+    # APIキーが環境変数に設定されているか確認
+    if (-not $env:OPENAI_API_KEY) {
+        Write-Host "# エラー: OPENAI_API_KEY 環境変数が設定されていません" -ForegroundColor Red
+        return "# APIキーが設定されていません。次のように環境変数を設定してください:`n# `$env:OPENAI_API_KEY = 'your_api_key_here'"
+    }
+
     try {
         Write-Host "# Codex CLI処理中..." -ForegroundColor Cyan
         
@@ -59,12 +65,25 @@ function global:Invoke-Codex {
     begin {
         # Codexスクリプトのパスを取得
         $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
+        if ($null -eq $scriptPath) {
+            $scriptPath = $PSScriptRoot
+        }
+        if ($null -eq $scriptPath) {
+            # フォールバック
+            $scriptPath = Join-Path $HOME "Documents\Codex-CLI\scripts"
+        }
         $scriptRoot = Split-Path -Parent $scriptPath
         $codexPath = Join-Path $scriptRoot "src\codex_query_integrated.py"
         
         # 一時ファイルのパス
         $tempQueryFile = [System.IO.Path]::GetTempFileName()
         Write-Debug "一時ファイル: $tempQueryFile"
+
+        # APIキーが環境変数に設定されているか確認
+        if (-not $env:OPENAI_API_KEY) {
+            Write-Host "# エラー: OPENAI_API_KEY 環境変数が設定されていません" -ForegroundColor Red
+            return
+        }
     }
 
     process {

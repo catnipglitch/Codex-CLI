@@ -52,19 +52,15 @@ CONFIG_FILE_PATH = os.path.join(os.path.expanduser("~"), ".openai", "codex-cli.j
 PROMPT_CONTEXT = Path(__file__).parent / "current_context.txt"
 
 def load_config():
-    """設定を読み込む（環境変数と設定ファイルの両方をサポート）"""
+    """設定を読み込む（環境変数のみをサポート）"""
     try:
         # 環境変数から設定を読み込む
-        env_api_key = os.environ.get('OPENAI_API_KEY')
-        env_org_id = os.environ.get('OPENAI_ORGANIZATION_ID')
-        env_model = os.environ.get('OPENAI_MODEL', 'gpt-4o')
-        
-        api_key = env_api_key
-        organization = env_org_id
-        model_name = env_model
+        api_key = os.environ.get('OPENAI_API_KEY')
+        organization = os.environ.get('OPENAI_ORGANIZATION_ID')
+        model_name = os.environ.get('OPENAI_MODEL', 'gpt-4o')
         language = "ja"  # デフォルト言語は日本語
         
-        # 統一された設定ファイルをチェック
+        # 設定ファイルをチェック（言語設定のみ）
         logging.debug(f"設定ファイルを確認中: {CONFIG_FILE_PATH}")
         
         if os.path.exists(CONFIG_FILE_PATH):
@@ -72,19 +68,15 @@ def load_config():
             try:
                 with open(CONFIG_FILE_PATH, 'r', encoding='utf-8') as file:
                     config = json.load(file)
-                # 環境変数が設定されていない場合のみ、ファイルから読み込む
-                api_key = env_api_key if env_api_key else config.get("api_key")
-                organization = env_org_id if env_org_id else config.get("organization")
-                model_name = env_model if env_model else config.get("model", "gpt-4o")
+                # 言語設定のみファイルから読み込む
                 language = config.get("language", "ja")
                 logging.debug(f"言語設定: {language}")
-                logging.debug(f"APIキーの長さ: {len(api_key) if api_key else 0}")
             except Exception as load_err:
                 logging.error(f"設定ファイル読み込みエラー: {str(load_err)}")
         
         if not api_key:
-            # 設定ファイルが存在しないか、APIキーがない場合は、テンプレート作成
-            logging.warning("APIキーが設定されていません。テンプレートを作成します。")
+            # APIキーがない場合はテンプレート作成
+            logging.warning("APIキーが環境変数に設定されていません。")
             create_template_config()
             sys.exit(1)
             
@@ -96,7 +88,7 @@ def load_config():
         sys.exit(1)
 
 def create_template_config():
-    """設定ファイルのテンプレートを作成"""
+    """設定ファイルのテンプレートを作成（環境変数のヒントあり）"""
     home = os.path.expanduser("~")
     codex_cli_path = os.path.join(home, ".openai", "codex-cli.json")
     
@@ -109,15 +101,8 @@ def create_template_config():
     
     if not os.path.exists(codex_cli_path):
         try:
-            # 環境変数からAPIキーと組織IDを取得
-            api_key = os.environ.get('OPENAI_API_KEY', '')
-            org_id = os.environ.get('OPENAI_ORGANIZATION_ID', '')
-            
-            # テンプレート設定の作成
+            # テンプレート設定の作成（言語設定のみ）
             template_config = {
-                "api_key": api_key,
-                "organization": org_id,
-                "model": "gpt-4o",
                 "language": "ja"  # デフォルト言語を日本語に設定
             }
             
@@ -127,22 +112,25 @@ def create_template_config():
             
             logging.info(f"設定ファイルを作成しました: {codex_cli_path}")
             
-            if not api_key:
-                print(f'# 設定ファイルを作成しました: {codex_cli_path}')
-                print('# APIキーを設定するには、このファイルを編集するか、環境変数 OPENAI_API_KEY を設定してください。')
-                print('# 設定ファイルのフォーマット:')
-                print('{')
-                print('  "api_key": "YOUR_API_KEY",')
-                print('  "organization": "YOUR_ORGANIZATION_ID",')
-                print('  "model": "gpt-4o",')
-                print('  "language": "ja"  // 言語設定: "en"(英語)または"ja"(日本語)')
-                print('}')
+            print(f'# 環境変数が設定されていません')
+            print(f'# 以下の環境変数を設定してください:')
+            print('# - OPENAI_API_KEY: OpenAI APIキー (必須)')
+            print('# - OPENAI_ORGANIZATION_ID: OpenAI 組織ID (省略可能)')
+            print('# - OPENAI_MODEL: OpenAIモデル名 (省略可能、デフォルト: gpt-4o)')
+            print('')
+            print('# 設定例 (Windowsコマンドプロンプト):')
+            print('# set OPENAI_API_KEY=your_api_key_here')
+            print('')
+            print('# 設定例 (PowerShell):')
+            print('# $env:OPENAI_API_KEY="your_api_key_here"')
+            print('')
+            print('# 設定例 (Linux/macOSのbashやzsh):')
+            print('# export OPENAI_API_KEY=your_api_key_here')
             
             return template_config
         except Exception as e:
             logging.error(f"設定ファイルの作成に失敗しました: {str(e)}")
             print(f'# エラー: 設定ファイルの作成に失敗しました: {str(e)}')
-            print(f'# 手動で以下の場所に設定ファイルを作成してください: {codex_cli_path}')
             sys.exit(1)
     
     return None
