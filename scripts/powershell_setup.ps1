@@ -3,10 +3,22 @@
 # このファイルはPowerShellプロファイルの準備を行い、
 # Codex CLIのショートカットキーをセットアップします。
 
+param(
+    [Parameter(Mandatory = $false)]
+    [string]$RepoRoot = (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)),
+
+    [Parameter(Mandatory = $false)]
+    [string]$OpenAIModelName = "gpt-4o"
+)
+
 # スクリプトのパスを取得
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 $rootPath = Split-Path -Parent $scriptPath
-$nl_cli_script_path = Join-Path $rootPath "src\codex_query_fixed.py"
+# 統合版スクリプトへのパスを使用
+$nl_cli_script_path = Join-Path $rootPath "src\codex_query_integrated.py"
+
+Write-Host "Codex CLI セットアップを開始します..." -ForegroundColor Cyan
+Write-Host "使用するモデル: $OpenAIModelName" -ForegroundColor Green
 
 # プロファイルパスの取得
 $profileExists = Test-Path $PROFILE
@@ -58,6 +70,52 @@ else {
 if (-not (Get-Module -ListAvailable -Name PSReadLine)) {
     Write-Warning "PSReadLineモジュールが見つかりません。インストールを推奨します。"
     Write-Host "インストールするには以下のコマンドを実行してください: Install-Module -Name PSReadLine -AllowPrerelease -Force" -ForegroundColor Yellow
+}
+
+# 設定ファイルの作成や確認
+$codexConfigDir = Join-Path $HOME ".openai"
+$codexConfigPath = Join-Path $codexConfigDir "codex-cli.json"
+
+if (-not (Test-Path $codexConfigDir)) {
+    New-Item -ItemType Directory -Path $codexConfigDir -Force | Out-Null
+    Write-Host "設定ディレクトリを作成しました: $codexConfigDir" -ForegroundColor Green
+}
+
+if (-not (Test-Path $codexConfigPath)) {
+    # OpenAI APIキーの入力を促す
+    $apiKey = ""
+    While ([string]::IsNullOrWhiteSpace($apiKey)) {
+        $apiKey = Read-Host "OpenAI APIキーを入力してください (https://platform.openai.com/api-keys より取得)"
+    }
+    
+    # 組織IDは任意
+    $orgId = Read-Host "OpenAI Organization IDを入力してください (省略可能)"
+    
+    # 設定ファイル作成
+    $configJson = @{
+        api_key      = $apiKey
+        organization = $orgId
+        model        = $OpenAIModelName
+        language     = "ja"  # デフォルト言語
+    } | ConvertTo-Json
+
+    Set-Content -Path $codexConfigPath -Value $configJson -Encoding UTF8
+    Write-Host "設定ファイルを作成しました: $codexConfigPath" -ForegroundColor Green
+}
+else {
+    Write-Host "既存の設定ファイルを使用します: $codexConfigPath" -ForegroundColor Green
+    # 既存ファイルのモデルを更新
+    try {
+        $configJson = Get-Content -Path $codexConfigPath -Raw | ConvertFrom-Json
+        if ($configJson.model -ne $OpenAIModelName) {
+            $configJson.model = $OpenAIModelName
+            $configJson | ConvertTo-Json | Set-Content -Path $codexConfigPath -Encoding UTF8
+            Write-Host "設定ファイルのモデルを更新しました: $OpenAIModelName" -ForegroundColor Green
+        }
+    }
+    catch {
+        Write-Warning "設定ファイルの更新中にエラーが発生しました: $_"
+    }
 }
 
 Write-Host "`nセットアップが完了しました。" -ForegroundColor Cyan

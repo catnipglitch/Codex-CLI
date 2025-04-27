@@ -6,7 +6,7 @@ $OutputEncoding = [System.Text.Encoding]::UTF8
 
 $nl_cli_script = "{{codex_query_path}}"
 
-# この関数はバッファからの入力を取得しcodex_query.pyに渡します
+# この関数はバッファからの入力を取得しcodex_query_integrated.pyに渡します
 function global:SendToCodex {
     param (
         [Parameter(Mandatory = $true)] [string] $buffer
@@ -60,7 +60,7 @@ function global:Invoke-Codex {
         # Codexスクリプトのパスを取得
         $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
         $scriptRoot = Split-Path -Parent $scriptPath
-        $codexPath = Join-Path $scriptRoot "src\codex_query_fixed.py"
+        $codexPath = Join-Path $scriptRoot "src\codex_query_integrated.py"
         
         # 一時ファイルのパス
         $tempQueryFile = [System.IO.Path]::GetTempFileName()
